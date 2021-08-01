@@ -16,6 +16,8 @@ gem "minima", "~> 2.5"
 gem "github-pages", "~> 215", group: :jekyll_plugins
 # If you have any plugins, put them here!
 
+gem "jekyll-whiteglass"
+
 gem "jekyll-paginate"
 
 group :jekyll_plugins do
