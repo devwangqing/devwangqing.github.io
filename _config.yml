@@ -34,7 +34,8 @@ permalink: /:year/:month/:day/:title
 paginate: 5
 
 # Build settings
-theme: jekyll-whiteglass
+# theme: jekyll-whiteglass
+remote_theme: yous/whiteglass
 # remote_theme: chesterhow/tale
 
 plugins:
