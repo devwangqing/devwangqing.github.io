@@ -19,6 +19,7 @@ L1 cache 和 L2 cache 是每个核独有的，L3 cache 是所有核共享的。
 
 > 现在的cpu都是多核多线程的，如2核4线程，也就是说每个核有2个线程。每个核独享一个L1 cache 和 L2 cache。每个核里的2个线程是共享 L1 cache 和 L2 chache的。
 
+
 ### MESI 协议
 
 因为 L1 cache 和 L2 cache 是每个核独有的，那么一旦多个核都缓存了相同变量，且一个核对该变量的值做出了修改，这种情况下，其他核要怎么处理该变量呢？这里就需要用到MESI协议。
@@ -38,6 +39,7 @@ MESI协议又叫作缓存一致性协议。MESI这4个字母分别代表着 Modi
 > M和I的状态是精确的，E的状态不是精确的。
 
 <图>
+
 
 ### Store Buffer 和 Invalid Queue
 
