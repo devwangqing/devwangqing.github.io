@@ -38,7 +38,7 @@ MESI协议又叫作缓存一致性协议。MESI 4个字母分别代表cpu缓存�
 
 **Step2.** 当 core1 发送读取数据x的消息时，因为 core0 已经缓存了x，所以 core0 会将自己的缓存行状态改成S，并将数据x发送给 core1。此时 core1 也会缓存数据x，将缓存行的状态设置成S。
 
-![cpu-core1-read]({{site.url}}/image/cpu-core1.read.png)
+![cpu-core1-read]({{site.url}}/image/cpu-core1-read.png)
 
 **Step3.** 当 core1 将数据x的值从1改成10时，会将缓存行的状态改成M，并发送通知。通知所有缓存数据x的核，该数据无效。core0收到通知后，会将缓存行的状态设置成I。
 
