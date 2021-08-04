@@ -30,13 +30,13 @@ MESI协议又叫作缓存一致性协议。MESI 4个字母分别代表cpu缓存�
 + Shared：多个核都缓存了该数据。
 + Invalid：其他核对它们缓存中的数据进行了修改，而本核收到了该数据失效的通知后，将缓存行的状态改为失效。
 
-假设内存中有个数据x=1，cpu有core0和core1。
+**场景：** 假设内存中有个数据x=1，cpu有core0和core1。
 
 **Step 1.** 当 core0 发送读取数据x的消息时，因为其他核里没有缓存数据x，所以 core0 是从内存中读取数据x并存在缓存中，此时缓存行的状态为E。
 
 ![cpu-core0-read]({{site.url}}/images/cpu-core0-read.png) <br/>
 
-**Step2.** 当 core1 发送读取数据x的消息时，因为 core0 已经缓存了x，所以 core0 会将自己的缓存行状态改成S，并将数据x发送给 core1。此时 core1 也会缓存数据x，将缓存行的状态设置成S。
+**Step2.** 当 core1 发送读取数据x的消息时，因为 core0 已经缓存了x，所以 core0 会将自己的缓存行状态设置成S，并将数据x发送给 core1。此时 core1 也会缓存数据x，将缓存行的状态设置成S。
 
 ![cpu-core1-read]({{site.url}}/images/cpu-core1-read.png) <br/>
 
@@ -53,10 +53,74 @@ MESI协议又叫作缓存一致性协议。MESI 4个字母分别代表cpu缓存�
 
 cpu加入了 Store Buffer 和 Invalid Queue 后，上面的流程就变成如下：
 
-core1 将数据x的值直接写入的 Store Buffer 中，然后发送数据失效通知。发送通知后，core1并不需要等待所有缓存数据x的核都应答，而是直接执行其他的cpu指令了。这样就解决了core1一直处于阻塞状态的问题。那么什么时候将 Store Buffer 的数据写入到缓存行呢？
+core1 将数据x的值直接写入的 Store Buffer 中，然后发送数据失效通知。发送通知后，core1并不会等待所有缓存数据x的核都应答，而是直接执行其他的cpu指令了。这样就解决了core1一直处于阻塞状态的问题。那么什么时候将 Store Buffer 的数据写入到缓存行呢？
 
-当 core0 收到数据失效通知后，会立即应答这个通知。然后将失效通知放入到 Invalid Queue 中，等到需要执行的时候才会去执行。
+当 core0 收到数据失效通知后，会立即应答这个通知，然后将失效通知放入到 Invalid Queue 中，异步将缓存行的状态设置成失效。
 
 当 core1 收到所有的应答后，就会将 Store Buffer 的数据写入到缓存行。
 
-> cpu 引入 Store Buffer 和 Invalid Queue 就是引入了异步处理。
+> cpu 引入 Store Buffer 和 Invalid Queue 就是引入了异步处理机制。
+
+我们还可以试想一个场景：当 core1 将数据x=10的值写入到 Store Buffer，但还没有写入到缓存行时，core1再次读取数据x的值，读到的是缓存行里的1，还是 Store Buffer 里的10呢？我们肯定是希望读到10，不然就出错了。所以cpu又引入了 `Store Forwarding`。如果读取的数据在 Store Buffer 里的话，会读取 Store Buffer，这样就能读取到之前写入的10了。
+
+![cpu-store-forwarding]({{site.url}}/images/cpu-store-forwarding.png)
+
+### 内存屏障
+
+为了解决性能问题，cpu引入了 Store Buffer 和 Invalid Queue。但是 Store Buffer 和 Invalid Queue 的数据处理是异步的，所以某些场景下会出现数据不一致的情况。[内存屏障的来历](https://zhuanlan.zhihu.com/p/125549632)这篇文章就详细说明了数据不一致的原因。下面简单对文章里的问题场景进行下描述：
+
++ 针对于Store Buffer
+  + core0 改变数据a的值，因为数据a所在缓存行的状态是S。所以数据a先写入Store Buffer，等待其他核的应答；
+  + 在等待应答期间，core0又改变了数据b的值，因为数据b所在缓存行的状态是E。所以数据b的值会直接写到缓存行里；
+  + 当core1读取数据b的值时，因为本地没有缓存，会读取到core0缓存行里最新数据b的值；
+  + 当core0读取数据a的值时，因为本地缓存了数据a，所以读取的是本地缓存a的值；这样就出现了数据a和数据b不一致的情况；
+
+为了解决Store Buffer数据不一致的问题，cpu加入了写屏障。
+
+加入了写屏障，写屏障后执行的指令会写到Store Buffer中（Store Buffer不为空的话）。core0将数据a写到Store Buffer，等待应答时，core0改变数据b的值，此时不是直接将数据b写入到缓存行里，而是会写到Store Buffer 里。这样当core1读取数据b时，读到的是core0缓存行里数据b的值，这样就能保证数据a和数据b的一致性。
+
++ 针对于Invalid Queue
+  + core0 改变数据a的值，因为数据a所在缓存行的状态是S。所以数据a先写入Store Buffer，等待其他核的应答；
+  + 在等待应答期间，core0又改变了数据b的值，因为有写屏障，数据b的值写到了Store Buffer 里；
+  + core1 收到失效通知后，应答该通知，并将失效通知写到Invalid Queue，等待异步处理；
+  + core0 收到失效通知应答后，将Store Buffer 里数据a和数据b写入缓存行里；
+  + 当core1 读取数据b时，因为本地没有缓存，会读取到core0缓存行里数据b的值；
+  + 当core1读取数据a时，因为本地缓存了数据a，所以读取的是本地缓存a的值。因为Invalid Queue的失效通知还没有执行，所以缓存里a的值是一个无效的值；这样就出现了数据a和数据b不一致的情况；
+
+为了解决Invalid Queue数据不一致的问题，cpu加入了读屏障。
+
+加入读屏障后，core1读取数据a的值时，会先处理Invalid Queue的失效通知，然后再读取数据的a。这样就不会出现数据不一致的情况。
+
+cpu 对指令执行了重排序，导致了数据一致性问题。使用内存屏障来解决cpu重排序导致的问题。
+
+### JMM里的内存屏障
+
+jvm 里加载数据指令是load，存储数据指令是store。这两个指令排列组合，就形成了4种内存屏障。
+
+| 屏障类型            | 指令示例                   | 说明                                                         |
+| :------------------ | :------------------------- | :----------------------------------------------------------- |
+| LoadLoad Barriers   | Load1; LoadLoad; Load2     | 确保 Load1 数据的装载先于 Load2 及所有后续装载指令的装载     |
+| StoreStore Barriers | Store1; StoreStore; Store2 | 确保 Store1 数据对其他处理器可见（刷新到内存）先于 Store2 及所有后续存储指令的存储 |
+| LoadStore Barriers  | Load1; LoadStore; Store2   | 确保 Load1 数据装载先于 Store2 及所有后续的存储指令刷新到内存 |
+| StoreLoad Barriers  | Store1; StoreLoad; Load2   | 确保 Store1 数据对其他处理器可见（刷新到内存）先于 Load2 及所有后续装载指令的装载。StoreLoad Barriers 会使该屏障之前的所有内存访问指令（存储和装载指令）完成之后，才执行该屏障之后的内存访问指令 |
+
+### volatile
+
+java的volatile的作用有两个，禁止编译器重排序和变量可见性。
+
+#### 禁止编译器重排序
+
+这里的重排序指的是编译器重排序，而不是cpu重排序。
+
+#### 变量可见性
+
+为了解决变量可见性，java的volatile干了两件事：1.使用c/c++的volatile关键字；2.内存屏障。
+
+使用c/c++的volatile关键字，转变成汇编语言后，volatile变量会增加Lock前缀，lock前缀的作用是锁定cpu缓存，其他cpu读取该缓存的请求都会被阻塞等待，直到锁被释放。并且锁被释放的同时，会将缓存的脏数据刷新到主内存中。还利用缓存一致性协议，让其他cpu缓存的该数据失效。
+
+如果只是单纯的将脏数据刷到主内存中，并没有解决多个数据一致性问题。操作volatile的变量时，java还增加了内存屏障。
+
+volatile 只解决了变量可见性的问题，并没有解决原子性问题。如果要保证原子性的话，代码需要加锁。使用 synchronized 或 Lock 来解决。
+
+### Happens-Before
+
