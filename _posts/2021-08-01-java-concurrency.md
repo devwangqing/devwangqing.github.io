@@ -133,7 +133,8 @@ volatile 只解决了变量可见性的问题，并没有解决原子性问题�
   clientSecret: '415f292888e045fac19698cbc5c4b8273a2cb137',
   repo: 'devwangqing.github.io',
   owner: 'devwangqing',
-  admin: ['devwangqing']
+  admin: ['devwangqing'],
+  id: '{{ page.url | truncate: 50, '' }}'
 })
 
 gitalk.render('gitalk-container')
