@@ -122,6 +122,8 @@ java的volatile的作用有两个，禁止编译器重排序和变量可见性�
 
 volatile 只解决了变量可见性的问题，并没有解决原子性问题。如果要保证原子性的话，代码需要加锁。使用 synchronized 或 Lock 来解决。
 
+<div id="gitalk-container"></div>
+
 <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
 <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
 
