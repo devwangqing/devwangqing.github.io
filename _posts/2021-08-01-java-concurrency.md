@@ -127,7 +127,7 @@ volatile 只解决了变量可见性的问题，并没有解决原子性问题�
 <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
 <script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
 
-<script type="javascript">
+<script type="text/javascript">
   var gitalk = new Gitalk({
   clientID: '23d11844462ff8356df3',
   clientSecret: '415f292888e045fac19698cbc5c4b8273a2cb137',
