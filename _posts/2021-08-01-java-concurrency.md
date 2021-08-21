@@ -121,3 +121,18 @@ java的volatile的作用有两个，禁止编译器重排序和变量可见性�
 如果只是单纯的将脏数据刷到主内存中，并没有解决多个数据一致性问题。操作volatile的变量时，java还增加了内存屏障。
 
 volatile 只解决了变量可见性的问题，并没有解决原子性问题。如果要保证原子性的话，代码需要加锁。使用 synchronized 或 Lock 来解决。
+
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+<script type="javascript">
+  var gitalk = new Gitalk({
+  clientID: '23d11844462ff8356df3',
+  clientSecret: '415f292888e045fac19698cbc5c4b8273a2cb137',
+  repo: 'devwangqing.github.io',
+  owner: 'devwangqing',
+  admin: ['devwangqing']
+})
+
+gitalk.render('gitalk-container')
+</script>
